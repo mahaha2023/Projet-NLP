@@ -1,0 +1,214 @@
+---
+title: "Rapport modèles linéaires généralisés et Choix de modèles"
+author: "MAHAMAT HASSAN ISSA"
+date: "2023-07-02"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# chargement de jeux de données
+#Données d'entrainement
+d=read.table("C:/Users/HP/Desktop/modele linneaire generalise/projet/meteo.train.csv",sep=",", header=TRUE)
+attach(d)
+
+# Données test
+D=read.table("C:/Users/HP/Desktop/modele linneaire generalise/projet/meteo.test.csv",sep=",",header=TRUE)
+attach(D)
+```
+
+# analyses descriptives
+
+
+
+```{r}
+hist(Mean.Sea.Level.Pressure.daily.mean..MSL.)
+boxplot(d$Mean.Sea.Level.Pressure.daily.mean..MSL. ~ d$pluie.demain)
+boxplot(d$Wind.Direction.daily.mean..900.mb. ~ d$pluie.demain)
+
+```
+
+# On estime les paramètres beta, en utilisant uniquement la base d'entrainement:d
+
+
+```{r pressure, echo=FALSE}
+m1=glm(pluie.demain~ . , data=d, family=binomial)
+# summary(m1)
+# on fait la prédiction sur la base d'entrainement:d
+pred_m1=predict(m1, d , type = "response")
+
+tab_m1=table(d$pluie.demain, pred_m1 >=.5)
+tab_m1
+# matrice de confusion 
+matrixconfusion_m1=1-sum(diag(tab_m1)/sum(tab_m1))
+matrixconfusion_m1
+```
+
+matrice de confusion est de 25%
+```{r}
+# choix automatique de modèle
+m2=step(m1)
+# summary(m2)
+coef(m2)# permet d"extraire les coefficients beta liés aux variables explicatives du modéle m2.
+
+
+# prédiction sur les données d'entrainement d
+pred_m2=predict(m2, d , type = "response")
+
+tab_m2=table(d$pluie.demain, pred_m2 >=.5)
+tab_m2
+matrixconfusion_m2=1-sum(diag(tab_m2)/sum(tab_m2))
+matrixconfusion_m2
+```
+Comme d'habitude, les étoiles et p-valeurs permettent de repérer les coefficients significativement différents de 0.
+D'après le summary de modèle m2 on observe le coefficient pour la variable (Mean.Sea.Level.Pressure.daily.mean..MSL.) est significativement diffèrent de 0. L'interprétation de ce coefficient 0.4821 est la suivante : quand on considère la probabilité de pleuvoir demain , le logarithme du rapport des cotes vaut 0.4821. Autrement dit, quand cette variable en question augmente d'une unité, la cote anglaise de l'événement est multipliée par exp(0.4821).
+
+Dans le tableau des coefficients, un coefficient positif indique que la covariable tend à faire augmenter la probabilité de l'événement à expliquer ; un coefficient négatif indique que la covariable tend à faire diminuer la probabilité de l'événement à expliquer.
+
+D'après le modèle ci dessus, on note que la matrice de confusion donne une valeur de 24.83% .
+```{r}
+m3=glm(pluie.demain~Mean.Sea.Level.Pressure.daily.mean..MSL. + Wind.Direction.daily.mean..900.mb. +Mean.Sea.Level.Pressure.daily.max..MSL.+
+Mean.Sea.Level.Pressure.daily.min..MSL.+Wind.Speed.daily.min..10.m.above.gnd., data=d, family=binomial)
+# summary(m3)
+# prédiction sur la base d'entrainement:d
+pred_m3=predict(m3, d , type = "response")
+
+tab_m3=table(d$pluie.demain, pred_m3 >=.5)
+tab_m3
+# matrce de confusion
+matrixconfusion_m3=1-sum(diag(tab_m3)/sum(tab_m3))
+matrixconfusion_m3
+```
+ La matrice de confusion donne une valeur de  29,6% .
+```{r}
+m4=glm(pluie.demain~Mean.Sea.Level.Pressure.daily.mean..MSL. +Wind.Direction.daily.mean..900.mb.+Mean.Sea.Level.Pressure.daily.max..MSL.+Mean.Sea.Level.Pressure.daily.min..MSL.+Wind.Speed.daily.min..10.m.above.gnd.+Sunshine.Duration.daily.sum..sfc.+Total.Cloud.Cover.daily.max..sfc.+Temperature.daily.max..2.m.above.gnd., data=d, family=binomial)
+# summary(m4)
+# prédiction sur la base d'entrainement:d
+pred_m4=predict(m4, d , type = "response")
+tab_m4=table(d$pluie.demain, pred_m4 >=.5)
+tab_m4
+#matrice de confusion
+matrixconfusion_m4=1-sum(diag(tab_m4)/sum(tab_m4))
+matrixconfusion_m4
+```
+
+```{r}
+m5=glm(pluie.demain~Mean.Sea.Level.Pressure.daily.mean..MSL. + Wind.Direction.daily.mean..900.mb. +Mean.Sea.Level.Pressure.daily.max..MSL.+
+         Mean.Sea.Level.Pressure.daily.min..MSL.+Sunshine.Duration.daily.sum..sfc.+
+         Total.Cloud.Cover.daily.max..sfc.+Temperature.daily.max..2.m.above.gnd.+Wind.Gust.daily.max..sfc.*Mean.Sea.Level.Pressure.daily.min..MSL., data=d, family=binomial)
+# summary(m5)
+# prédiction sur la base d'entrainement:d
+pred_m5=predict(m5, d , type = "response")
+
+tab_m5=table(d$pluie.demain, pred_m5 >=.5)
+tab_m5
+matrixconfusion_m5=1-sum(diag(tab_m5)/sum(tab_m5))
+matrixconfusion_m5
+
+```
+ 
+ On voit la proportion de faux positive et faux négative.
+```{r}
+library(MASS)
+m6=stepAIC(m1,data=d,direction = "backward",k=log(nrow(d)))
+# summary(m6)
+pred_backward_aic=predict(m6, d , type = "response")
+tab_backward=table(d$pluie.demain, pred_backward_aic >=.5)
+tab_backward
+matrixconfusion_bacward=1-sum(diag(tab_backward)/sum(tab_backward))
+matrixconfusion_bacward
+```
+ la valeur de matrice de confusion est de 25.16%
+ 
+ 
+# Choix de modéle à l'aide de déviance
+# Analysons la déviance. La sortie nous indique
+```{r}
+# m1=glm(pluie.demain~ . , data=d, family=binomial)
+# d'après summary(m1)
+# Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1232.4  on 1135  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1232.4, 1179 - 1135, lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1232.4,  1135, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+# m2=step(m1)
+# d'après summary(m2)
+# Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1247.3  on 1162  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1247.3, 1179 - 1162 , lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1247.3,  1162, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+# Notons que dans cette situation, notre modéle m2 bien qu'insuffisant, peut tout de même être utile.
+# d'après summary(m3)
+# Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1381.3  on 1174  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1381.3, 1179 - 1174 , lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1381.3,  1174, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+# d'après summary(m4)
+#Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1312.3  on 1171  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1312.3, 1179 - 1171 , lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1312.3,  1171, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+# d'après summary(m5)
+# Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1304.2  on 1170  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1304.2, 1179 - 1170 , lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1304.2,  1170, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+
+# d'après summary(m6)
+# Null deviance: 1635.4  on 1179  degrees of freedom
+# Residual deviance: 1272.3  on 1169  degrees of freedom
+# On commence par comparer notre modèle au modèle sans covariable
+pchisq(1635.4 - 1272.3, 1179 - 1169, lower = F)
+# On obtient une p-valeur très faible : on rejette le modèle sans covariable. Notre modèle est donc utile.
+
+# Comparons maintenant notre modèle au modèle saturé
+pchisq(1272.3,  1169, lower = F)
+# Là aussi, la p-valeur est faible : on rejette donc notre modèle et on préfère le modèle saturé. Autrement dit, notre modèle n'est pas suffisant.
+```
+### choix de modéle à l'aide de anova
+```{r}
+anova(m1,m2,test="LRT")
+anova(m3,m2,test="LRT")
+anova(m4,m3,m2,test="LRT")
+anova(m3,m4,test="LRT")
+anova(m5,m2,test="LRT")
+anova(m5,m4,test="LRT")
+anova(m5,m3,test="LRT")
+anova(m6,m2,test="LRT")
+```
+ D'après les différents tests anova ,le modèle m2 est le meilleur.
+ 
+# d'après les diffirérents choix de modéles ci dessus, on a choisit le modèle m2 pour faire la prédiction sur le données test.
+```{r}
+
+#prédiction sur les données test D
+pred_test_m2=predict(m2,newdata = D, type = "response")
+head(pred_test_m2)
+predict_test_m2=(pred_test_m2 >=.5)
+head(predict_test_m2)
+
+```
+ 
